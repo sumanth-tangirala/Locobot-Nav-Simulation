@@ -1,0 +1,67 @@
+<mujoco model="locobot">
+    <include file="shared.xml"></include>
+
+
+    <worldbody>
+        <body childclass="robot0:locobot" name="main_body" pos="-1.5 -9 0.1" euler="0 0 1.57"> <!-- pos="0.2869 0.2641 0 -->
+            <!-- <inertial diaginertia="0.019995 0.019995 0.03675" mass="2.4" pos="0 0 0"></inertial> -->
+            <joint axis="1 0 0" name="robot0:slide0" pos="0 0 0" type="slide"></joint>
+            <joint axis="0 1 0" name="robot0:slide1" pos="0 0 0" type="slide"></joint>
+            <joint axis="0 0 1" name="robot0:slide2" pos="0 0 0" type="slide"></joint>
+            <joint axis="0 0 1" name="robot0:hinge0" pos="0 0 0" type="hinge"></joint>
+        
+            <geom name="main_body" pos="0.001 0 0.06219" type="mesh" contype="0" conaffinity="0" group="1" mesh="main_body" material="main_body" class="robot0:black"/>
+            <!-- <site name="robot0:base" pos="0. 0. 0." rgba="1 0 0 1" size="0.02 0.02 0.02"></site> -->
+            <!-- Plate 1 -->
+            <body name="plate1" pos="0. 0. -0.01">
+              <!-- <inertial mass="0.640128902693298" pos="0. 0. 0." /> -->
+              <geom pos="0.0973 0 0.1052" type="mesh" contype="0" conaffinity="0" group="1" mesh="plate" material="plate" class="robot0:yellow" />
+            </body>
+            <!-- Plate 2 -->
+            <body name="plate2" pos="0. 0. -0.005">
+              <!-- <inertial mass="0.640128902693298" pos="0. 0. 0." /> -->
+              <geom pos="0.0973 0 0.1052" type="mesh" contype="0" conaffinity="0" group="1" mesh="plate" material="plate" class="robot0:yellow" />
+            </body>
+            <!-- Wheels -->
+            <body name="wheel_left_link" pos="0 0.115 0.0352" quat="0.707107 -0.707107 0 0">
+                <!-- <inertial pos="0 0 0" mass="0.01" diaginertia="0.001 0.001 0.001" /> -->
+                <joint name="wheel_left_joint" pos="0 0 0" axis="0 0 1" />
+                <geom type="mesh" contype="0" conaffinity="0" group="1" mesh="wheel" />
+                <geom size="0.0352 0.0103" type="cylinder" />
+            </body>
+            <body name="wheel_right_link" pos="0 -0.115 0.0352" quat="0.707107 -0.707107 0 0">
+                <!-- <inertial pos="0 0 0" mass="0.01" diaginertia="0.001 0.001 0.001" /> -->
+                <joint name="wheel_right_joint" pos="0 0 0" axis="0 0 1" />
+                <geom type="mesh" contype="0" conaffinity="0" group="1" mesh="wheel" />
+                <geom size="0.0352 0.0103" type="cylinder" />
+            </body>
+            <!-- cam mount -->
+            <body name="cam_mount"  pos="0. 0. 0."> <!-- pos="-0.03751 0 0.1433">-->
+              <!-- <inertial fullinertia="0.0159487749924762 9.45818767875249E-08 -0.000266253609478166 0.0137751425461872 2.26699147122113E-06 0.00331206257835318" mass="0.508068698311304" pos="-0.03751 0 0.1433"></inertial> -->
+              <!-- <inertial mass="0.508068698311304" pos="-0.03751 0 0.1433"></inertial> -->
+              <geom pos="-0.03751 0 0.1433" type="mesh" contype="0" conaffinity="0" group="1" mesh="cam_mount" material="cam_mount" class="robot0:black"/>
+            </body>
+            <!-- Camera -->
+            <body name="head_pan_link" pos="-0.0134945 -0.000373468 0.5498">
+              <!-- <inertial pos="0 0 0.0220876" quat="0.707107 0.707107 0 0" mass="0.0182769" diaginertia="1.32244e-05 7.83292e-06 7.13386e-06" /> -->
+              <joint name="head_pan_joint" pos="0 0 0" axis="0 0 1" limited="true" range="-1.57 1.57" />
+              <geom type="mesh" contype="0" conaffinity="0" group="1" rgba="0.25098 0.25098 0.25098 1" mesh="tilt_link" />
+              <geom type="mesh" rgba="0.25098 0.25098 0.25098 1" mesh="tilt_link" />
+              <body name="head_tilt_link" pos="0 0 0.05">
+                <!-- <inertial pos="0.0320361 0.000429944 -0.00413265" quat="-0.0368144 0.708165 0.0370088 0.704114" mass="0.0929603" diaginertia="7.57649e-05 5.21956e-05 3.5313e-05" /> -->
+                <joint name="head_tilt_joint" pos="0 0 0" axis="0 1 0" limited="true" range="-1.57 1.57" />
+                <geom type="mesh" contype="0" conaffinity="0" group="1" rgba="0.792157 0.819608 0.933333 1" mesh="roll_link" />
+                <geom type="mesh" rgba="0.792157 0.819608 0.933333 1" mesh="roll_link" />
+                <geom pos="0.06705 0 -0.00425" type="mesh" contype="0" conaffinity="0" group="1" rgba="0.792157 0.819608 0.933333 1" mesh="camera_link" />
+                <geom pos="0.06705 0 -0.00425" type="mesh" rgba="0.792157 0.819608 0.933333 1" mesh="camera_link" />
+              </body>
+           </body>
+        </body>
+    </worldbody>
+    <!-- Velocity and steering actuators for both the wheels -->
+    <actuator>
+        <velocity ctrllimited="true" ctrlrange="-1000 1000" joint="wheel_left_joint" gear="1" name="wheel_left_actuator" user="1"></velocity>
+        <velocity ctrllimited="true" ctrlrange="-1000 1000" joint="wheel_right_joint" gear="1" name="wheel_right_actuator" user="1"></velocity>
+    </actuator>
+</mujoco>
+  

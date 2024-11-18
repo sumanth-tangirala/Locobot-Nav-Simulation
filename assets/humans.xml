@@ -1,0 +1,14 @@
+<mujoco model="friction_floor_uniform">
+    <worldbody>
+        <site name="human_0" pos="2.5 -9.5 0" size="0.4 1" type="cylinder" rgba=".1 .1 .1 1"></site>
+        <site name="human_1" pos="2.5 -9.5 0" size="0.4 1" type="cylinder" rgba=".1 .1 .1 1"></site>
+        <site name="human_2" pos="2.5 -9.5 0" size="0.4 1" type="cylinder" rgba=".1 .1 .1 1"></site>
+        <site name="human_3" pos="2.5 -9.5 0" size="0.4 1" type="cylinder" rgba=".1 .1 .1 1"></site>
+        <site name="human_4" pos="2.5 -9.5 0" size="0.4 1" type="cylinder" rgba=".1 .1 .1 1"></site>
+        <site name="human_5" pos="2.5 -9.5 0" size="0.4 1" type="cylinder" rgba=".1 .1 .1 1"></site>
+        <site name="human_6" pos="2.5 -9.5 0" size="0.4 1" type="cylinder" rgba=".1 .1 .1 1"></site>
+        <site name="human_7" pos="2.5 -9.5 0" size="0.4 1" type="cylinder" rgba=".1 .1 .1 1"></site>
+        <site name="human_8" pos="2.5 -9.5 0" size="0.4 1" type="cylinder" rgba=".1 .1 .1 1"></site>
+        <site name="human_9" pos="2.5 -9.5 0" size="0.4 1" type="cylinder" rgba=".1 .1 .1 1"></site>
+    </worldbody>
+</mujoco>

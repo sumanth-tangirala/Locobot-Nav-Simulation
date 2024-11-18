@@ -1,0 +1,15 @@
+<mujoco model="friction_floor_uniform">
+    <worldbody>
+        <geom name="wall1" pos="-3.3 0 0.5" size="0.1 10.55 0.5" type="box" rgba="1 0.2 0.2 1"/>
+        <geom name="wall2" pos="0 10.55 0.5" size="3.6 0.1 0.5" type="box" rgba="1 0.2 0.2 1"/>
+        <geom name="wall3" pos="1.8 0 0.5" size="10.7 0.1 0.5" type="box" rgba="1 0.2 0.2 1" euler="0 0 1.4"/>
+        <geom name="wall4" pos="-1.7 -10.55 0.5" size="1.6 0.1 0.5" type="box" rgba="1 0.2 0.2 1"/>
+        
+        <geom name="stairs" pos="-1.9 3.175 0.5" size="1.37 2.9 0.5" type="cylinder" rgba="1 0 0 1"/>
+
+        <site name="werblin" pos="-2.5 9.5 0" size="0.5" rgba="0 1 0 0.5"/>
+        <site name="core" pos="2.75 9.5 0" size="0.5" rgba="0 0 1 0.5"/>
+        <site name="bsc" pos="-2.5 -3 0" size="0.5" rgba="1 0 0 0.5"/>
+        <site name="ee" pos="-1.5 -9.5 0" size="0.5" rgba="1 0 1 0.5"/>
+    </worldbody>
+</mujoco>
