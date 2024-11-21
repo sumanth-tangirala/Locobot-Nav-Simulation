@@ -31,11 +31,11 @@ class Humans:
         if x < -2.8 or y < -10.05 or y > 10.05 or oblique_cond <= 0:  # wall conditions
             return False, "Wall"
 
-        if np.linalg.norm(position - np.array([-1.9, 3.175])) < 0.5:
-            return False, "Stairs"
-
-        # if -2.8 <= x <= -0.06 and -0.225 <= y <= 6.825:  # stairs conditions
+        # if np.linalg.norm(position - np.array([-1.9, 3.175])) < 0.5:
         #     return False, "Stairs"
+
+        if -2.8 <= x <= -0.06 and -0.225 <= y <= 6.825:  # stairs conditions
+            return False, "Stairs"
 
         robot_pos = self.get_robot_position()
 
