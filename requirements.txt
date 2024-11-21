@@ -3,8 +3,6 @@ certifi @ file:///home/conda/feedstock_root/build_artifacts/certifi_172527807809
 cloudpickle @ file:///home/conda/feedstock_root/build_artifacts/cloudpickle_1729059237860/work
 contourpy @ file:///Users/runner/miniforge3/conda-bld/contourpy_1729602376506/work
 cycler @ file:///home/conda/feedstock_root/build_artifacts/cycler_1696677705766/work
-# Editable Git install with no remote (desSocCog==0.0.0)
--e /Users/htnamus/All_Stuff/Programming_Stuff/DesSocCog
 distlib==0.3.6
 etils==1.10.0
 filelock==3.10.7

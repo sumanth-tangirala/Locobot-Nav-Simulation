@@ -21,7 +21,7 @@ class Locobot:
 
     def __init__(self, num_humans=0):
         self.model = mj.MjModel.from_xml_path(
-            os.path.join(os.path.dirname(__file__), "../assets/world.xml")
+            os.path.join(os.path.dirname(__file__), "assets/world.xml")
         )
         self.data = mj.MjData(self.model)
 

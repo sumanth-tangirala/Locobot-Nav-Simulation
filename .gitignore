@@ -1,2 +1,8 @@
 # Add egg-info
 *.egg-info
+
+# Add .DS_Store
+.DS_Store
+
+# Add pycache
+__pycache__
