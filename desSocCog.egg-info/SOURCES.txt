@@ -1,8 +1,0 @@
-setup.py
-desSocCog/__init__.py
-desSocCog/locobot_env.py
-desSocCog/utils.py
-desSocCog.egg-info/PKG-INFO
-desSocCog.egg-info/SOURCES.txt
-desSocCog.egg-info/dependency_links.txt
-desSocCog.egg-info/top_level.txt
