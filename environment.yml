@@ -1,4 +1,4 @@
-name: locobotSim
+name: DesSocCog
 channels:
   - conda-forge
   - robostack-staging
@@ -101,4 +101,4 @@ dependencies:
       - mujoco==3.2.4
       - pyopengl==3.1.7
       - zipp==3.20.2
-prefix: /opt/homebrew/Caskroom/miniforge/base/envs/locobotSim
+prefix: /opt/homebrew/Caskroom/miniforge/base/envs/DesSocCog
