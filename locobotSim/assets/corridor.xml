@@ -10,6 +10,7 @@
         <site name="werblin" pos="-2.5 9.5 0" size="0.5" rgba="0 1 0 0.5"/>
         <site name="core" pos="2.75 9.5 0" size="0.5" rgba="0 0 1 0.5"/>
         <site name="bsc" pos="-2.5 -3 0" size="0.5" rgba="1 0 0 0.5"/>
-        <site name="ee" pos="-1.5 -9.5 0" size="0.5" rgba="1 0 1 0.5"/>
+        <site name="ee" pos="-2.5 -10 0" size="0.5" rgba="1 0 1 0.5"/>
+        <site name="arc" pos=".25 -5.5 0" size="0.5" rgba="0 1 1 0.5"/>
     </worldbody>
 </mujoco>

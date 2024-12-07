@@ -2,21 +2,16 @@ import numpy as np
 import mujoco as mj
 from mujoco.glfw import glfw
 
-from locobotSim.locobot_env import Locobot
-from locobotSim.callbacks import Callbacks
+from locobotSim.env.locobot_env import Locobot
+from locobotSim.utils.callbacks import Callbacks
 
 np.set_printoptions(suppress=True)
 
 
 class LocobotVisualizer:
     def __init__(self):
-        self.locobot = Locobot(num_humans=4)
-        self.locobot.reset(
-            human_starts=["core", "ee", "bsc", "werblin"],
-            human_goals=["bsc", "core", "ee", "ee"],
-            # human_starts=["core", "bsc"],
-            # human_goals=["ee", "ee"],
-        )
+        self.locobot = Locobot(num_humans=5)
+        self.locobot.reset()
 
         cam = mj.MjvCamera()
         opt = mj.MjvOption()
@@ -49,7 +44,7 @@ class LocobotVisualizer:
 
         cam.azimuth = 180.0
         cam.elevation = -90.0
-        cam.distance = 10.0
+        cam.distance = 20.0
         cam.lookat = np.array([0.0, 0.0, 0.0])
 
         self.window = window

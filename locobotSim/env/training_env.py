@@ -5,7 +5,7 @@ import mujoco as mj
 from gym import spaces
 
 from locobotSim import utils
-from locobotSim.locobot_env import Locobot
+from locobotSim.env.locobot_env import Locobot
 
 np.set_printoptions(suppress=True)
 
@@ -16,24 +16,22 @@ class LocobotTrainingEnv(gym.Env):
 
     def __init__(
         self,
-        max_steps=30,
-        noisy=False,
-        noise_scale=0.01,
+        max_steps=100,
         return_full_trajectory=False,
-        prop_steps=100,
-        max_speed=700,
+        prop_steps=5,
     ):
 
         print("Environment Configuration: ")
         print("Max Steps: ", max_steps)
         print("Prop Steps: ", prop_steps)
 
-        self.locobot = Locobot(max_speed)
+        self.locobot = Locobot()
+        self.sites = list(self.locobot.sites.values())
 
         self.locobot.reset()
         self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(2,))
 
-        self.obs_dims = 4  # x, y, theta, v
+        self.obs_dims = 4 + 5*2  # x, y, theta, v, (human_x, human_y) * 5
         self.goal_dims = 2  # x, y
 
         self.observation_space = spaces.Dict(
@@ -53,8 +51,6 @@ class LocobotTrainingEnv(gym.Env):
         self.max_steps = max_steps
         self.return_full_trajectory = return_full_trajectory
         self.prop_steps = prop_steps
-        self.noisy = noisy
-        self.noise_scale = noise_scale
 
     def reset(self, seed=None, options=dict()):
         self.locobot.reset()
@@ -63,20 +59,13 @@ class LocobotTrainingEnv(gym.Env):
         goal = options.get("goal", None)
 
         if goal is None:
-            self.goal = np.random.uniform(
-                -self.goal_limit,
-                self.goal_limit,
-                size=(self.goal_dims,),
-            )
+            self.goal = self.sites[np.random.randint(len(self.sites))]
         else:
             self.goal = goal
         return self._get_obs()
 
     def _get_obs(self):
         obs = self.locobot.get_obs()
-
-        if self.noisy:
-            obs += np.random.normal(0, self.noise_scale, obs.shape)
 
         achieved_goal = np.array([obs[0], obs[1]])
 
@@ -86,8 +75,19 @@ class LocobotTrainingEnv(gym.Env):
             "desired_goal": np.float32(self.goal),
         }
 
-    def _terminal(self, s, g):
-        return utils.pos_distance(s, g) < self.distance_threshold
+    def in_collision_with_human(self, robot_position):
+        human_positions = self.locobot.humans.get_human_positions()
+        human_dist = np.linalg.norm(human_positions - robot_position, axis=1)
+        return np.any(
+            human_dist
+            < (self.locobot.humans.HUMAN_RADIUS + self.locobot.LOCOBOT_RADIUS)
+        )
+
+    def _terminal(self, s, g, in_collision_with_human):
+        return (
+            in_collision_with_human
+            or utils.pos_distance(s, g) < self.distance_threshold
+        )
 
     def compute_reward(self, ag, dg, info):
         return -(utils.pos_distance(ag, dg) >= self.distance_threshold).astype(
@@ -100,23 +100,37 @@ class LocobotTrainingEnv(gym.Env):
         self.locobot.apply_action(action)
 
         current_traj = []
+        in_collision_with_human = False
         for _ in range(self.prop_steps):
             for i in range(self.locobot.model.nv):
                 self.locobot.data.qacc_warmstart[i] = 0
 
             self.locobot.step()
+            in_collision_with_human = self.in_collision_with_human(
+                self.locobot.get_robot_position()
+            )
             if self.return_full_trajectory:
                 current_traj.append(self._get_obs()["achieved_goal"])
 
+            if in_collision_with_human:
+                break
+
         obs = self._get_obs()
-        info = {
-            "is_success": self._terminal(obs["achieved_goal"], obs["desired_goal"]),
-            "traj": np.array(current_traj),
-        }
-        done = (
-            self._terminal(obs["achieved_goal"], obs["desired_goal"])
-            or self.steps >= self.max_steps
+        is_terminal = self._terminal(
+            obs["achieved_goal"], obs["desired_goal"], in_collision_with_human
         )
+
+        is_success = False
+
+        if is_terminal and not in_collision_with_human:
+            is_success = True
+
+        info = {
+            "is_success": is_success,
+            "traj": np.array(current_traj),
+            "in_collision_with_human": in_collision_with_human,
+        }
+        done = is_success or self.steps >= self.max_steps
         reward = self.compute_reward(obs["achieved_goal"], obs["desired_goal"], {})
         return obs, reward, done, info
 
@@ -128,9 +142,10 @@ if __name__ == "__main__":
 
     for _ in range(100):
         next_action = env.action_space.sample()
-        next_action = np.array([1.0, 1.0])
-        obs, reward, done, _ = env.step(next_action)
+        obs, reward, done, info = env.step(next_action)
         traj.append(np.copy(obs["observation"]))
+
+    print(info)
 
     traj = np.array(traj)
 

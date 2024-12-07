@@ -3,7 +3,7 @@
 
 
     <worldbody>
-        <body childclass="robot0:locobot" name="main_body" pos="-1.5 -9 0.1" euler="0 0 1.57"> <!-- pos="0.2869 0.2641 0 -->
+        <body childclass="robot0:locobot" name="main_body" pos="0 0 0.1" euler="0 0 1.57"> <!-- pos="0.2869 0.2641 0 -->
             <!-- <inertial diaginertia="0.019995 0.019995 0.03675" mass="2.4" pos="0 0 0"></inertial> -->
             <joint axis="1 0 0" name="robot0:slide0" pos="0 0 0" type="slide"></joint>
             <joint axis="0 1 0" name="robot0:slide1" pos="0 0 0" type="slide"></joint>

@@ -1,14 +1,15 @@
 <mujoco model="friction_floor_uniform">
     <worldbody>
-        <site name="human_0" pos="2.5 -9.5 0" size="0.4 1" type="cylinder" rgba=".1 .1 .1 1"></site>
-        <site name="human_1" pos="2.5 -9.5 0" size="0.4 1" type="cylinder" rgba=".1 .1 .1 1"></site>
-        <site name="human_2" pos="2.5 -9.5 0" size="0.4 1" type="cylinder" rgba=".1 .1 .1 1"></site>
-        <site name="human_3" pos="2.5 -9.5 0" size="0.4 1" type="cylinder" rgba=".1 .1 .1 1"></site>
-        <site name="human_4" pos="2.5 -9.5 0" size="0.4 1" type="cylinder" rgba=".1 .1 .1 1"></site>
-        <site name="human_5" pos="2.5 -9.5 0" size="0.4 1" type="cylinder" rgba=".1 .1 .1 1"></site>
+        <site name="human_0" pos="3.5 -9.5 0" size="0.2 1" type="cylinder" rgba=".5 .5 1 1"></site><!--        Yellow-->
+        <site name="human_1" pos="2.5 -8.5 0" size="0.2 1" type="cylinder" rgba=".5 .5 1 1"></site> <!--        Lilac-->
+
+        <site name="human_2" pos="2.5 -10.5 0" size="0.2 1" type="cylinder" rgba=".5 .5 1 1"></site><!--        Light green-->
+        <site name="human_3" pos="1.5 -9.5 0" size="0.2 1" type="cylinder" rgba=".5 .5 1 1"></site><!--        Navy blue-->
+        <site name="human_4" pos="2.5 -9.5 0" size="0.2 1" type="cylinder" rgba=".5 .5 1 1"></site>
+        <!-- <site name="human_5" pos="2.5 -9.5 0" size="0.4 1" type="cylinder" rgba=".1 .1 .1 1"></site>
         <site name="human_6" pos="2.5 -9.5 0" size="0.4 1" type="cylinder" rgba=".1 .1 .1 1"></site>
         <site name="human_7" pos="2.5 -9.5 0" size="0.4 1" type="cylinder" rgba=".1 .1 .1 1"></site>
         <site name="human_8" pos="2.5 -9.5 0" size="0.4 1" type="cylinder" rgba=".1 .1 .1 1"></site>
-        <site name="human_9" pos="2.5 -9.5 0" size="0.4 1" type="cylinder" rgba=".1 .1 .1 1"></site>
+        <site name="human_9" pos="2.5 -9.5 0" size="0.4 1" type="cylinder" rgba=".1 .1 .1 1"></site> -->
     </worldbody>
 </mujoco>
