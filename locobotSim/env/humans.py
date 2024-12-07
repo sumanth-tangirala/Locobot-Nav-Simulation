@@ -40,7 +40,11 @@ class Humans:
             self.in_agent_collision,
             self.get_human_positions,
             self.reset_goal,
-        )
+        ),
+        
+    def set_human_positions(self, positions):
+        for i, position in enumerate(positions):
+            self.model.site_pos[self.human_indices[i], :2] = position
 
     def get_human_positions(self, exclude=None):
         indices = self.human_indices.copy()

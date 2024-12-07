@@ -5,7 +5,7 @@ import mujoco as mj
 from gym import spaces
 
 from locobotSim import utils
-from locobotSim.env.locobot_env import Locobot
+from locobotSim.env.locobot_env import LocobotEnv
 
 np.set_printoptions(suppress=True)
 
@@ -25,13 +25,11 @@ class LocobotTrainingEnv(gym.Env):
         print("Max Steps: ", max_steps)
         print("Prop Steps: ", prop_steps)
 
-        self.locobot = Locobot()
+        self.locobot = LocobotEnv()
         self.sites = list(self.locobot.sites.values())
-
-        self.locobot.reset()
         self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(2,))
 
-        self.obs_dims = 4 + 5*2  # x, y, theta, v, (human_x, human_y) * 5
+        self.obs_dims = 4 + 5 * 2  # x, y, theta, v, (human_x, human_y) * 5
         self.goal_dims = 2  # x, y
 
         self.observation_space = spaces.Dict(
@@ -52,11 +50,11 @@ class LocobotTrainingEnv(gym.Env):
         self.return_full_trajectory = return_full_trajectory
         self.prop_steps = prop_steps
 
-    def reset(self, seed=None, options=dict()):
-        self.locobot.reset()
-        self.steps = 0
+        self.reset()
 
-        goal = options.get("goal", None)
+    def reset(self, init_obs=None, goal=None):
+        self.locobot.reset(init_obs)
+        self.steps = 0
 
         if goal is None:
             self.goal = self.sites[np.random.randint(len(self.sites))]

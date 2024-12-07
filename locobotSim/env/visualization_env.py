@@ -2,7 +2,7 @@ import numpy as np
 import mujoco as mj
 from mujoco.glfw import glfw
 
-from locobotSim.env.locobot_env import Locobot
+from locobotSim.env.locobot_env import LocobotEnv
 from locobotSim.utils.callbacks import Callbacks
 
 np.set_printoptions(suppress=True)
@@ -10,7 +10,7 @@ np.set_printoptions(suppress=True)
 
 class LocobotVisualizer:
     def __init__(self):
-        self.locobot = Locobot(num_humans=5)
+        self.locobot = LocobotEnv(num_humans=5)
         self.locobot.reset()
 
         cam = mj.MjvCamera()

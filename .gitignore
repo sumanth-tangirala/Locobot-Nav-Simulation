@@ -6,3 +6,5 @@
 
 # Add pycache
 __pycache__
+
+trained_models/

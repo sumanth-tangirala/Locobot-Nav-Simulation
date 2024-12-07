@@ -1,4 +1,3 @@
-from multiprocessing import Pool, cpu_count
 import numpy as np
 import heapq
 from scipy.ndimage import convolve
@@ -144,16 +143,13 @@ class RVO(AgentMotionPlanner):
         goal = self.goals[agent_idx]
         movement_vector = self.get_movement_vector(position, goal)
 
-        currently_close_human_indices = self.get_close_human_indices(
-            agent_idx, self.distance_matrix, 0.1
-        )
-        collision_exclude_indices = [agent_idx] + list(currently_close_human_indices)
-
         if movement_vector is None:
             return position
 
         for disp in np.arange(self.MAX_DISP, 0, -self.DISP_GRAN):
-            for angle in np.arange(0, self.COLL_AVOID_MAX_ANGLE + self.ANGLE_GRAN, self.ANGLE_GRAN):
+            for angle in np.arange(
+                0, self.COLL_AVOID_MAX_ANGLE + self.ANGLE_GRAN, self.ANGLE_GRAN
+            ):
                 for angle_direction in [-1, 1]:
 
                     angle_change = angle * angle_direction
@@ -180,9 +176,7 @@ class RVO(AgentMotionPlanner):
 
                     if not is_reaching_goal and (
                         self.in_env_collision(new_position)
-                        or self.in_agent_collision(
-                            new_position, collision_exclude_indices
-                        )
+                        or self.in_agent_collision(new_position, [agent_idx])
                     ):
                         continue
 
