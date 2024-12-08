@@ -19,13 +19,15 @@ class LocobotTrainingEnv(gym.Env):
         max_steps=100,
         return_full_trajectory=False,
         prop_steps=5,
+        num_humans=5,
     ):
 
         print("Environment Configuration: ")
         print("Max Steps: ", max_steps)
         print("Prop Steps: ", prop_steps)
+        print("Number of Humans: ", num_humans)
 
-        self.locobot = LocobotEnv()
+        self.locobot = LocobotEnv(num_humans=num_humans)
         self.sites = list(self.locobot.sites.values())
         self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(2,))
 
@@ -64,7 +66,7 @@ class LocobotTrainingEnv(gym.Env):
 
     def _get_obs(self):
         obs = self.locobot.get_obs()
-        obs = obs[:self.obs_dims]
+        obs = obs[: self.obs_dims]
 
         achieved_goal = np.array([obs[0], obs[1]])
 

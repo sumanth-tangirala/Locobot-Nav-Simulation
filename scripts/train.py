@@ -15,8 +15,9 @@ from stable_baselines3.her import ObsDictWrapper
 np.set_printoptions(suppress=True)
 
 seed = 42
-MAX_STEPS = 500
-PROP_STEPS = 7
+MAX_STEPS = 250
+PROP_STEPS = 8
+NUM_HUMANS = 2
 
 # Set numpy, torch and other random seeds
 np.random.seed(seed)
@@ -32,7 +33,9 @@ env_factory = EnvironmentFactory(
 )
 
 env_name = "Locobot"
-checkpt_path = "./trained_models/" + env_name + f"_{MAX_STEPS}_{PROP_STEPS}_sac/"
+checkpt_path = (
+    "./trained_models/" + env_name + f"_{MAX_STEPS}_{PROP_STEPS}_{NUM_HUMANS}/"
+)
 
 load_model = False
 train_model = True
