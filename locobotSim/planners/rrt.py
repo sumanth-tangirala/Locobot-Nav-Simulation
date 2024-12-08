@@ -23,6 +23,7 @@ class RRT:
     trajectory = []
     controls = []
     prop_steps = []
+    MAX_INVALID_COUNT = 1e5
 
     def __init__(self, start, goal, env: LocobotEnv):
         self.start = start
@@ -76,27 +77,18 @@ class RRT:
 
                 new_config, control, prop_steps, is_valid, traj = self._propagate(random_node)
 
-                # new_x, new_y = new_config[:2]
-                # if np.abs(new_x) > 49 or np.abs(new_y) > 49:
-                #     out_of_bounds_count += 1
-                #     if out_of_bounds_count > 100:
-                #         print("Out of bounds")
-                #         return None
-                #     continue
-
-
-
                 if new_config is None or not is_valid:
-                    if new_config is not None:
-                        new_node = RRTNode(new_config, parent=random_node, is_valid=is_valid)
+                    out_of_bounds_count += 1
+                    if out_of_bounds_count > self.MAX_INVALID_COUNT:
+                        break
                     continue
 
                 new_node = RRTNode(new_config, parent=random_node, is_valid=is_valid)
-                goal_dist = new_node.compute_distance(self.goal, individual=False)
-
-                if goal_dist < min_dist:
-                    min_dist = goal_dist
-                    print('Reached closer to goal:', new_config[:2], 'Distance:', min_dist)
+                # goal_dist = new_node.compute_distance(self.goal, individual=False)
+                #
+                # if goal_dist < min_dist:
+                #     min_dist = goal_dist
+                #     print('Reached closer to goal:', new_config[:2], 'Distance:', min_dist)
 
                 random_node.add_child(new_node, control, prop_steps)
 
@@ -118,7 +110,7 @@ class RRT:
             closest_node = self.tree[min_node_idx]
             print("Could not reach goal")
             print("Closest node to goal: ", closest_node.config)
-            return None
+            return None, None, len(self.tree) + out_of_bounds_count
 
         self.trajectory_found = True
 
@@ -149,9 +141,9 @@ class RRT:
 
         print("Total Steps: ", total_steps)
 
-        return self.trajectory
+        return self.trajectory, total_steps, len(self.tree) + out_of_bounds_count
 
-    def visualize_rrt(self):
+    def visualize_rrt(self, fname=''):
         print("Generating Animation...")
         fig, ax = plt.subplots()
         ax.set_xlim(ENV_X_MIN, ENV_X_MAX)
@@ -191,11 +183,11 @@ class RRT:
         )
 
         print("Saving Animation...")
-        file_name = "./data/rrt/tree."
+        file_name = f"./data/rrt/{self.env.num_humans}_humans/{fname}_tree."
 
         anim.save(file_name + "mp4", writer="ffmpeg")
 
-    def visualize_path(self):
+    def visualize_path(self, fname=''):
         plt.figure(figsize=(8, 8))
 
         # Set the limits
@@ -218,10 +210,10 @@ class RRT:
         plt.plot(self.goal[0], self.goal[1], "ro")
 
         # Save the plot
-        plt.savefig("./data/rrt/path.png")
+        plt.savefig(f"./data/rrt/{self.env.num_humans}_humans/{fname}_path.png")
 
 
 
-    def visualize(self):
-        self.visualize_rrt()
-        self.visualize_path()
+    def visualize(self, fname):
+        self.visualize_rrt(fname)
+        self.visualize_path(fname)

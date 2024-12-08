@@ -2,13 +2,12 @@ import numpy as np
 import heapq
 from scipy.ndimage import convolve
 from scipy.spatial import distance_matrix as get_distance_matrix
+from collections import deque
 
 from locobotSim.env import in_env_collision
 
 
 class AgentMotionPlanner:
-    DISP_GRAN = 0.01
-
     def __init__(
         self,
         model,
@@ -17,6 +16,8 @@ class AgentMotionPlanner:
         get_human_positions,
         get_robot_position,
         reset_goal,
+        sites,
+        num_humans,
     ):
         self.model = model
         self.human_indices = human_indices
@@ -24,14 +25,19 @@ class AgentMotionPlanner:
         self.get_human_positions = get_human_positions
         self.get_robot_position = get_robot_position
         self.reset_goal = reset_goal
+        self.sites = sites
+        self.num_humans = num_humans
 
         self.goals = None
+        self.goal_sites = None
 
-    def update_goals(self, goals):
+    def update_goals(self, goals, goal_sites):
         self.goals = goals
+        self.goal_sites = goal_sites
 
-    def update_goal(self, i, goal):
+    def update_goal(self, i, goal, goal_site):
         self.goals[i] = goal
+        self.goal_sites[i] = goal_site
 
     def apply_human_action(self, i, position):
         self.model.site_pos[self.human_indices[i], :2] = position
@@ -203,23 +209,19 @@ class RVO(AgentMotionPlanner):
 
 
 class CostMapPlanner(AgentMotionPlanner):
+    DISP_GRAN = 0.01
     X_LIMITS = [-3, 4.5]
     Y_LIMITS = [-10.2, 10.2]
 
-    # X_LIMITS = [-2.8, 0]
-    # Y_LIMITS = [-1, 0]
+    ENV_COLLISION_ACT_DIST = int(.5/DISP_GRAN)
+    ENV_COLLISION_COST = int(.25/DISP_GRAN)
 
-    ENV_COLLISION_ACT_DIST = 1
-    ENV_COLLISION_COST = 5
+    AGENT_COLLISION_ACT_DIST = int(0.4/DISP_GRAN)
+    AGENT_COLLISION_COST = int(0/DISP_GRAN)
 
-    AGENT_COLLISION_ACT_DIST = 2
-    AGENT_COLLISION_COST = 5
-    AGENT_AVOIDANCE_DIST = 50
-
-    GOAL_REWARD = 0
     COLLISION_COST = 1e10
 
-    IS_FIRST_STEP = True
+    IS_FIRST = True
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -235,15 +237,16 @@ class CostMapPlanner(AgentMotionPlanner):
         self.n = len(self.y_coords)
 
         self.generate_cost_kernels()
-        self.cost_map = self.generate_cost_map(in_env_collision)
+        self.cost_maps = self.load_cost_maps()
+
+        self.cost_map_shape = (self.m + 2 * self.map_buffer, self.n + 2 * self.map_buffer)
+        self.human_coords = [None for _ in range(self.num_humans)]
 
     def generate_cost_kernels(self):
-        self.map_buffer = max(
-            self.AGENT_COLLISION_ACT_DIST, self.ENV_COLLISION_ACT_DIST
-        )
-        self.env_collision_cost_kernel = self.generate_collision_kernel(
-            self.ENV_COLLISION_ACT_DIST, self.ENV_COLLISION_COST
-        )
+        self.map_buffer = int(1/self.DISP_GRAN)
+        # self.env_collision_cost_kernel = self.generate_collision_kernel(
+        #     self.ENV_COLLISION_ACT_DIST, self.ENV_COLLISION_COST
+        # )
         self.agent_collision_cost_kernel = self.generate_collision_kernel(
             self.AGENT_COLLISION_ACT_DIST, self.AGENT_COLLISION_COST
         )
@@ -266,11 +269,20 @@ class CostMapPlanner(AgentMotionPlanner):
 
     def visualize_map(self, map):
         import matplotlib.pyplot as plt
-
         plt.imshow(map)
         plt.show()
 
-    def generate_cost_map(self, collision_checker):
+    def load_cost_maps(self):
+        goal_cost_maps = dict()
+
+        for site in self.sites.keys():
+            goal_site_cost_map = np.load(f'./data/costmaps/{site}.npy')
+            goal_cost_maps[site] = goal_site_cost_map
+
+        return goal_cost_maps
+
+    def generate_cost_maps(self, collision_checker):
+        print('Generating cost maps')
         occupancy_grid = np.zeros(
             (
                 self.m + 2 * self.map_buffer,
@@ -279,12 +291,15 @@ class CostMapPlanner(AgentMotionPlanner):
             dtype=np.float32,
         )
 
+        print('Generated occupancy grid')
         positions_to_query = []
         for x in self.x_coords:
             for y in self.y_coords:
                 positions_to_query.append([x, y])
 
         positions_to_query = np.array(positions_to_query)
+
+        print('Generated positions to query')
 
         collision_points = (
             collision_checker(positions_to_query)
@@ -301,12 +316,54 @@ class CostMapPlanner(AgentMotionPlanner):
 
         cost_map[occupancy_grid == 1] = np.inf
 
-        return cost_map
+        print('size of cost map:', cost_map.size)
+
+        print('Generated env cost_map')
+
+        goal_cost_maps = dict()
+
+        sites = {"werblin": self.sites["werblin"]}
+        for site, site_coords in sites.items():
+            goal_site_cost_map = cost_map.copy()
+            x_idx = np.argmin(np.abs(self.x_coords - site_coords[0])) + self.map_buffer
+            y_idx = np.argmin(np.abs(self.y_coords - site_coords[1])) + self.map_buffer
+
+            visited = set()
+            queue = deque([(x_idx, y_idx, 0)])
+
+            while queue:
+                x, y, cost = queue.popleft()
+                if (x, y) in visited:
+                    continue
+                visited.add((x, y))
+
+                goal_site_cost_map[x, y] += cost
+                for dx, dy in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
+                    new_x, new_y = x + dx, y + dy
+
+                    if new_x < 0 or new_x >= self.m + 2 * self.map_buffer or new_y < 0 or new_y >= self.n + 2 * self.map_buffer:
+                        continue
+                    if goal_site_cost_map[new_x, new_y] == np.inf or (new_x, new_y) in visited:
+                        continue
+                    queue.append((new_x, new_y, cost + 1))
+                for dx, dy in [(1, 1), (-1, 1), (1, -1), (-1, -1)]:
+                    new_x, new_y = x + dx, y + dy
+                    if new_x < 0 or new_x >= self.m + 2 * self.map_buffer or new_y < 0 or new_y >= self.n + 2 * self.map_buffer:
+                        continue
+                    if goal_site_cost_map[new_x, new_y] == np.inf or (new_x, new_y) in visited:
+                        continue
+                    queue.append((new_x, new_y, cost + 1.2))
+
+            goal_cost_maps[site] = goal_site_cost_map
+            print('Generated cost map for site', site)
+
+            # Save cost map as a numpy file
+            np.save(f'./data/costmaps/{site}.npy', goal_site_cost_map)
+        raise NotImplementedError()
+        return goal_cost_maps
 
     def init_human_coordinates(self):
         human_positions = self.get_human_positions()
-        self.human_coords = [None for _ in range(len(human_positions))]
-
         # Check for the closest point in the self.x_coords and self.y_coords
         for i, position in enumerate(human_positions):
             x_idx = np.argmin(np.abs(self.x_coords - position[0])) + self.map_buffer
@@ -314,32 +371,34 @@ class CostMapPlanner(AgentMotionPlanner):
 
             self.human_coords[i] = (x_idx, y_idx)
 
-    def update_cost_map(self):
-        latest_cost_map = self.cost_map.copy()
+    def get_robot_coords(self):
+        robot_position = self.get_robot_position()
+        x_idx = np.argmin(np.abs(self.x_coords - robot_position[0])) + self.map_buffer
+        y_idx = np.argmin(np.abs(self.y_coords - robot_position[1])) + self.map_buffer
+        return x_idx, y_idx
 
-        for position in self.human_coords:
-            latest_cost_map[
-                position[0] - self.map_buffer : position[0] + self.map_buffer + 1,
-                position[1] - self.map_buffer : position[1] + self.map_buffer + 1,
+    def get_agents_cost_map(self):
+        robot_coords = self.get_robot_coords()
+
+        agents_cost_map = np.zeros(self.cost_map_shape)
+
+        agents_cost_map[
+            robot_coords[0] - self.AGENT_COLLISION_ACT_DIST : robot_coords[0] + self.AGENT_COLLISION_ACT_DIST + 1,
+            robot_coords[1] - self.AGENT_COLLISION_ACT_DIST : robot_coords[1] + self.AGENT_COLLISION_ACT_DIST + 1,
+        ] += self.agent_collision_cost_kernel
+
+        agents_cost_map[robot_coords[0], robot_coords[1]] = self.COLLISION_COST
+
+        for human_coord in self.human_coords:
+            agents_cost_map[
+                human_coord[0] - self.AGENT_COLLISION_ACT_DIST : human_coord[0] + self.AGENT_COLLISION_ACT_DIST + 1,
+                human_coord[1] - self.AGENT_COLLISION_ACT_DIST : human_coord[1] + self.AGENT_COLLISION_ACT_DIST + 1,
             ] += self.agent_collision_cost_kernel
 
-            latest_cost_map[position[0]][position[1]] = self.COLLISION_COST
+            agents_cost_map[human_coord[0], human_coord[1]] = self.COLLISION_COST
 
-        return latest_cost_map
 
-    def get_personal_cost_map(self, cost_map, curr_pos, goal_pos):
-        cost_map = cost_map.copy()
-
-        cost_map[
-            curr_pos[0] - self.map_buffer : curr_pos[0] + self.map_buffer + 1,
-            curr_pos[1] - self.map_buffer : curr_pos[1] + self.map_buffer + 1,
-        ] -= self.agent_collision_cost_kernel
-
-        cost_map[curr_pos[0]][curr_pos[1]] = 0
-
-        cost_map[goal_pos[0]][goal_pos[1]] = self.GOAL_REWARD
-
-        return cost_map
+        return agents_cost_map
 
     def convert_coordinates_to_position(self, coords):
         i, j = coords
@@ -349,245 +408,49 @@ class CostMapPlanner(AgentMotionPlanner):
         y = self.y_coords[y_index]
         return np.array([x, y])
 
-    def perform_astar(self, cost_map, start, goal):
-        open_set = []
-        closed_set = set()
+    def move_human(self, agent_idx, agents_cost_map):
+        goal = self.goal_sites[agent_idx]
 
-        heapq.heappush(open_set, (0, start))
+        cost_map = self.cost_maps[goal] + agents_cost_map
 
-        # Dictionaries to keep track of the path and costs
-        came_from = {}
-        g_score = {start: 0}
+        # Remove the agent from the cost map
 
-        # Heuristic function (Euclidean distance)
-        def heuristic(a, b):
-            return np.linalg.norm(np.array(a) - np.array(b))
+        curr_pos = self.human_coords[agent_idx]
 
-        while open_set:
-            # Pop the node with the lowest f_score
-            f_current, current = heapq.heappop(open_set)
+        cost_map[
+            curr_pos[0] - self.AGENT_COLLISION_ACT_DIST : curr_pos[0] + self.AGENT_COLLISION_ACT_DIST + 1,
+            curr_pos[1] - self.AGENT_COLLISION_ACT_DIST : curr_pos[1] + self.AGENT_COLLISION_ACT_DIST + 1,
+        ] -= self.agent_collision_cost_kernel
 
-            # Check if the goal has been reached
-            if current == goal:
-                # Reconstruct the path from start to goal
-                coords = current
-                path = [coords]
-                while coords in came_from:
-                    coords = came_from[coords]
-                    path.append(coords)
-                path.reverse()
+        cost_map[curr_pos[0], curr_pos[1]] = 0
 
-                return path
-
-            closed_set.add(current)
-
-            i, j = current
-
-            # Explore neighboring cells (up, down, left, right and diagonals)
-            neighbors = []
-            for di, dj in [
-                (-1, 0),
-                (1, 0),
-                (0, -1),
-                (0, 1),
-                (-1, -1),
-                (-1, 1),
-                (1, -1),
-                (1, 1),
-            ]:
-                neighbor = (i + di, j + dj)
-
-                if (
-                    neighbor in closed_set
-                    or neighbor[0] < 0
-                    or neighbor[0] >= self.m
-                    or neighbor[1] < 0
-                    or neighbor[1] >= self.n
-                    or cost_map[neighbor[0], neighbor[1]] == np.inf
-                ):
-                    continue
-
-                # Calculate the tentative g_score
-                tentative_g_score = (
-                    g_score[current] + cost_map[neighbor[0], neighbor[1]]
-                )
-
-                # If this path to neighbor is better, record it
-                if neighbor not in g_score or tentative_g_score < g_score[neighbor]:
-                    came_from[neighbor] = current
-                    g_score[neighbor] = tentative_g_score
-                    f_score = tentative_g_score + heuristic(neighbor, goal)
-                    heapq.heappush(open_set, (f_score, neighbor))
-        return None
-
-    def get_new_coordinates(self, cost_map, agent_idx):
-
-        start = self.human_coords[agent_idx]
-
-        goal_pos = self.goals[agent_idx]
-
-        goal_i = np.searchsorted(self.x_coords, goal_pos[0]) + self.map_buffer
-        goal_j = np.searchsorted(self.y_coords, goal_pos[1]) + self.map_buffer
-        goal = (goal_i, goal_j)
-
-        cost_map = self.get_personal_cost_map(cost_map, start, goal)
-
-        path = self.perform_astar(cost_map, start, goal)
-
-        if path is not None:
-            if len(path) > 1:
-                next_pos = path[1]
-            else:
-                next_pos = path[0]
-            return next_pos
-
-        return start
-
-    def move_human(self, agent_idx):
-        new_coordinates = self.get_new_coordinates(self.latest_cost_map, agent_idx)
-        self.human_coords[agent_idx] = new_coordinates
-        new_position = self.convert_coordinates_to_position(new_coordinates)
-        return new_position, new_coordinates
-
-    def recompute_all_paths(self):
-        if self.IS_FIRST_STEP:
-            self.IS_FIRST_STEP = False
-            self.init_human_coordinates()
-
-        self.latest_cost_map = self.update_cost_map()
-
-        for i, _ in enumerate(self.human_coords):
-            new_position, new_coordinates = self.move_human(i)
-            self.human_coords[i] = new_coordinates
-            self.apply_human_action(i, new_position)
-
-        # num_process = min(len(self.human_coords), cpu_count())
-
-        # with Pool(num_process) as p:
-        #     new_positions_coords = p.map(self.move_human, range(len(self.human_coords)))
-
-        # for i, position_coords in enumerate(new_positions_coords):
-        #     position, coords = position_coords
-        #     self.human_coords[i] = coords
-        #     self.apply_human_action(i, position)
-
-    def plan_human_path(self, agent_idx, cost_map):
-        start = self.human_coords[agent_idx]
-
-        goal_pos = self.goals[agent_idx]
-
-        goal_i = np.searchsorted(self.x_coords, goal_pos[0]) + self.map_buffer
-        goal_j = np.searchsorted(self.y_coords, goal_pos[1]) + self.map_buffer
-        goal = (goal_i, goal_j)
-
-        cost_map = self.get_personal_cost_map(cost_map, start, goal)
-
-        path = self.perform_astar(cost_map, start, goal)
-
-        return path
-
-    def init_human_paths(self, cost_map, distance_matrix=None):
-        self.human_paths = []
-        for agent_idx, _ in enumerate(self.human_coords):
-            if distance_matrix is None:
-                self.human_paths.append(
-                    self.plan_human_path(
-                        agent_idx,
-                        cost_map,
-                    )
-                )
-            else:
-                close_human_indices = self.get_close_human_indices(
-                    agent_idx, distance_matrix, self.AGENT_AVOIDANCE_DIST
-                )
-                # self.
-
-    def reset_goal(self, agent_idx):
-        goal_pos = self.goals[agent_idx]
-
-        goal_i = np.searchsorted(self.x_coords, goal_pos[0]) + self.map_buffer
-        goal_j = np.searchsorted(self.y_coords, goal_pos[1]) + self.map_buffer
-        goal = (goal_i, goal_j)
-
-        self.human_paths[agent_idx] = self.perform_astar(
-            self.latest_cost_map, self.human_coords[agent_idx], goal
-        )
-
-    def execute_path(self, agent_idx, path):
-        if path is None:
-            return
-        if len(path) > 1:
-            new_coordinates = path[1]
-        else:
-            new_coordinates = path[0]
-
-        new_position = self.convert_coordinates_to_position(new_coordinates)
-
-        self.human_paths[agent_idx] = path[1:]
-        self.human_coords[agent_idx] = new_coordinates
-        self.apply_human_action(agent_idx, new_position)
-
-        if np.linalg.norm(new_position - self.goals[agent_idx]) < 0.1:
-            return True
-        return False
-
-    def compute_distance_matrix(self, human_coords):
-        human_coords = np.array(human_coords)
-
-        return get_distance_matrix(human_coords, human_coords)
-
-    def economic_path_planning(self):
-        cost_map = self.cost_map
-
-        if self.IS_FIRST_STEP:
-            self.IS_FIRST_STEP = False
-            self.init_human_coordinates()
-            self.init_human_paths(cost_map)
-
-        is_cost_map_updated = False
-        for agent_idx, path in enumerate(self.human_paths):
-            agent_coordinates = self.human_coords[agent_idx]
-
-            is_other_agent_close = False
-
-            for other_agent_idx, other_agent_coords in enumerate(self.human_coords):
-                if agent_idx == other_agent_idx:
-                    continue
-
-                if (
-                    np.linalg.norm(
-                        np.array(agent_coordinates) - np.array(other_agent_coords)
-                    )
-                    < self.AGENT_COLLISION_ACT_DIST
-                ):
-                    is_other_agent_close = True
-                    break
-
-            if path is not None and not is_other_agent_close and len(path) > 1:
-                if self.execute_path(agent_idx, path):
-                    self.reset_goal(agent_idx)
+        min_cost = np.inf
+        next_position = None
+        for i, j in [(1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, 1), (1, -1), (-1, -1)]:
+            new_x, new_y = curr_pos[0] + i, curr_pos[1] + j
+            if new_x < 0 or new_x >= (self.m + self.map_buffer) or new_y < 0 or new_y >= (self.n + self.map_buffer):
                 continue
 
-            if not is_cost_map_updated:
-                cost_map = self.update_cost_map()
-                is_cost_map_updated = True
+            if cost_map[new_x][new_y] < min_cost:
+                min_cost = cost_map[new_x][new_y]
+                next_position = (new_x, new_y)
 
-            print("Recomputing paths for agent", agent_idx)
+        if next_position is None:
+            next_position = curr_pos
 
-            self.human_paths[agent_idx] = self.plan_human_path(agent_idx, cost_map)
+        return self.convert_coordinates_to_position(next_position), next_position
 
-            self.execute_path(agent_idx, self.human_paths[agent_idx])
 
-    def avoidance_path_planning(self):
-        cost_map = self.cost_map
-
-        if self.IS_FIRST_STEP:
-            self.IS_FIRST_STEP = False
-            self.init_human_coordinates()
-            distance_matrix = self.compute_distance_matrix(self.human_coords)
-            self.init_human_paths(cost_map, distance_matrix)
 
     def step(self):
-        # self.recompute_all_paths()
-        # self.economic_path_planning()
-        self.avoidance_path_planning()
+        if self.IS_FIRST:
+            self.init_human_coordinates()
+            self.IS_FIRST = False
+
+
+        agents_cost_map = self.get_agents_cost_map()
+
+        for i in range(self.num_humans):
+            new_position, new_coordinates = self.move_human(i, agents_cost_map)
+            self.apply_human_action(i, new_position)
+            self.human_coords[i] = new_coordinates

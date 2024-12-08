@@ -1,15 +1,15 @@
 <mujoco model="friction_floor_uniform">
     <worldbody>
-        <site name="human_0" pos="3.5 -9.5 0" size="0.2 1" type="cylinder" rgba=".5 .5 1 1"></site>
-        <site name="human_1" pos="2.5 -8.5 0" size="0.2 1" type="cylinder" rgba=".5 .5 1 1"></site>
+<!--        <site name="human_0" pos="3.5 -9.5 0" size="0.2 1" type="cylinder" rgba=".5 .5 1 1"></site>-->
+<!--        <site name="human_1" pos="2.5 -8.5 0" size="0.2 1" type="cylinder" rgba=".5 .5 1 1"></site>-->
 
-        <site name="human_2" pos="2.5 -10.5 0" size="0.2 1" type="cylinder" rgba=".5 .5 1 1"></site>
-        <site name="human_3" pos="1.5 -9.5 0" size="0.2 1" type="cylinder" rgba=".5 .5 1 1"></site>
-        <site name="human_4" pos="2.5 -9.5 0" size="0.2 1" type="cylinder" rgba=".5 .5 1 1"></site>
-<!--        <site name="human_0" pos="2.5 -9.5 0" size="0.2 1" type="cylinder" rgba="1 0 0 1"></site>-->
-<!--        <site name="human_1" pos="2.5 -9.5 0" size="0.2 1" type="cylinder" rgba="0 1 0 1"></site>-->
-<!--        <site name="human_2" pos="2.5 -9.5 0" size="0.2 1" type="cylinder" rgba="0 0 1 1"></site>-->
-<!--        <site name="human_3" pos="2.5 -9.5 0" size="0.2 1" type="cylinder" rgba="1 1 0 1"></site>-->
-<!--        <site name="human_4" pos="2.5 -9.5 0" size="0.2 1" type="cylinder" rgba="0 1 1 1"></site>-->
+<!--        <site name="human_2" pos="2.5 -10.5 0" size="0.2 1" type="cylinder" rgba=".5 .5 1 1"></site>-->
+<!--        <site name="human_3" pos="1.5 -9.5 0" size="0.2 1" type="cylinder" rgba=".5 .5 1 1"></site>-->
+<!--        <site name="human_4" pos="2.5 -9.5 0" size="0.2 1" type="cylinder" rgba=".5 .5 1 1"></site>-->
+        <site name="human_0" pos="2.5 -9.5 0" size="0.2 1" type="cylinder" rgba="1 0 0 1"></site>
+        <site name="human_1" pos="2.5 -9.5 0" size="0.2 1" type="cylinder" rgba="0 1 0 1"></site>
+        <site name="human_2" pos="2.5 -9.5 0" size="0.2 1" type="cylinder" rgba="0 0 1 1"></site>
+        <site name="human_3" pos="2.5 -9.5 0" size="0.2 1" type="cylinder" rgba="1 1 0 1"></site>
+        <site name="human_4" pos="2.5 -9.5 0" size="0.2 1" type="cylinder" rgba="0 1 1 1"></site>
     </worldbody>
 </mujoco>
