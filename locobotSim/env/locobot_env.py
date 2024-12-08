@@ -38,7 +38,7 @@ class LocobotEnv:
         4: "arc",
     }
 
-    def __init__(self, num_humans=5, seed=None):
+    def __init__(self, num_humans=5, seed=None, human_agent_planner="CostMapPlanner"):
         self.num_humans = num_humans
         if seed is not None:
             np.random.seed(seed)
@@ -60,6 +60,7 @@ class LocobotEnv:
             self.data,
             self.sites,
             self.get_robot_position,
+            motion_planner=human_agent_planner,
         )
 
         self.reset()

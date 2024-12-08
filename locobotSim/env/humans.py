@@ -1,4 +1,4 @@
-from locobotSim.env.agentMotionPlanner import *
+from locobotSim.env.humanMotionPlanners import *
 
 class Humans:
     def __init__(
@@ -8,7 +8,7 @@ class Humans:
         data,
         sites,
         get_robot_position,
-        motion_planner="RVO",
+        motion_planner="CostMapPlanner",
     ):
         self.human_indices = [i + 5 for i in range(num_humans)]
 
@@ -31,6 +31,8 @@ class Humans:
             self.get_human_positions,
             self.get_robot_position,
             self.reset_goal,
+            sites,
+            num_humans=num_humans,
         )
 
     def set_human_positions(self, positions):
@@ -107,7 +109,7 @@ class Humans:
         goal_coords = np.array([self.sites[goal] for goal in goals])
 
         self.goals = goals
-        self.agent_motion_planner.update_goals(goal_coords)
+        self.agent_motion_planner.update_goals(goal_coords, goals)
 
     def reset_goal(self, indices):
         if isinstance(indices, int):
@@ -120,7 +122,7 @@ class Humans:
 
         for idx, i in enumerate(indices):
             self.goals[i] = goals[idx]
-            self.agent_motion_planner.update_goal(i, self.sites[goals[idx]])
+            self.agent_motion_planner.update_goal(i, self.sites[goals[idx]], goals[idx])
 
     def apply_human_action(self, i, position):
         self.model.site_pos[self.human_indices[i], :2] = position
