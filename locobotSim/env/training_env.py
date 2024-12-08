@@ -64,6 +64,7 @@ class LocobotTrainingEnv(gym.Env):
 
     def _get_obs(self):
         obs = self.locobot.get_obs()
+        obs = obs[:self.obs_dims]
 
         achieved_goal = np.array([obs[0], obs[1]])
 

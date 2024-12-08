@@ -3,6 +3,8 @@ import heapq
 from scipy.ndimage import convolve
 from scipy.spatial import distance_matrix as get_distance_matrix
 
+from locobotSim.env import in_env_collision
+
 
 class AgentMotionPlanner:
     DISP_GRAN = 0.01
@@ -11,16 +13,16 @@ class AgentMotionPlanner:
         self,
         model,
         human_indices,
-        in_env_collision,
         in_agent_collision,
         get_human_positions,
+        get_robot_position,
         reset_goal,
     ):
         self.model = model
         self.human_indices = human_indices
-        self.in_env_collision = in_env_collision
         self.in_agent_collision = in_agent_collision
         self.get_human_positions = get_human_positions
+        self.get_robot_position = get_robot_position
         self.reset_goal = reset_goal
 
         self.goals = None
@@ -55,20 +57,42 @@ class AgentMotionPlanner:
 
 class RVO(AgentMotionPlanner):
     MAX_DISP = 0.01
-    DISP_GRAN = 0.0025
+    DISP_GRAN = 0.0035
+    COLL_AVOID_MAX_ANGLE = np.pi / 1.2
     LOOKAHEAD_DIST = 7
-    COLL_AVOID_MAX_ANGLE = np.pi / 1.8
-    MOVEMENT_MAX_ANGLE = np.pi / 2
+    MOVEMENT_MAX_ANGLE = np.pi / 1.2
     ANGLE_GRAN = np.pi / 18
     IS_SIMPLE = False
-    MAX_STUCK_COUNTER = 70
-    GOAL_WAIT_TIMESTEPS = 50
+    MAX_STUCK_COUNTER = 60
+    STUCK_THRESHOLD = DISP_GRAN
+    GOAL_WAIT_TIMESTEPS = 70
+    ROBOT_ACT_DIST = 0.2
+    ROBOT_ANGLE_DIST = np.pi/20
+    GOAL_RADIUS=0.1
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.stuck_counter = [0] * len(self.human_indices)
         self.reset_counter = [None] * len(self.human_indices)
+        self.displacements = np.zeros((len(self.human_indices), self.MAX_STUCK_COUNTER, 2))
+        self.displacements.fill(np.inf)
+
+    def update_displacements(self, i, old_position, new_position):
+        displacement = new_position - old_position
+        self.displacements[i] = np.roll(self.displacements[i], 1, axis=0)
+        self.displacements[i][0] = displacement
+
+    def reset_human_goal(self, i):
+        self.reset_goal(i)
+        self.reset_counter[i] = None
+        self.displacements[i] = np.zeros((self.MAX_STUCK_COUNTER, 2))
+        self.displacements[i].fill(np.inf)
+
+    def is_human_stuck(self, i):
+        if np.linalg.norm(self.displacements[i].sum(axis=0)) <= self.STUCK_THRESHOLD:
+            return True
+
+        return False
 
     def step(self):
         human_positions = self.get_human_positions()
@@ -76,111 +100,109 @@ class RVO(AgentMotionPlanner):
         self.distance_matrix = self.compute_distance_matrix(human_positions)
 
         for i, position in enumerate(human_positions):
+            if self.reset_counter[i] is not None:
+                self.reset_counter[i] -= 1
+                if self.reset_counter[i] == 0:
+                    self.reset_human_goal(i)
+                    self.reset_counter[i] = None
+                    continue
             old_position = position.copy()
             new_position = self.get_new_position(i, position)
             human_positions[i] = new_position
             self.apply_human_action(i, new_position)
-            if np.linalg.norm(new_position - old_position) < 0.005:
-                self.stuck_counter[i] += 1
-
-                if self.stuck_counter[i] > self.MAX_STUCK_COUNTER:
-                    self.reset_goal([i])
-                    self.stuck_counter[i] = 0
-            else:
-                self.stuck_counter[i] = 0
+            self.update_displacements(i, old_position, new_position)
+            if self.is_human_stuck(i) and self.reset_counter[i] is None:
+                self.reset_human_goal(i)
 
         goal_distances = np.linalg.norm(human_positions - self.goals, axis=1)
-        success_indices = np.where(goal_distances < 0.05)[0]
+        success_indices = np.where(goal_distances < self.GOAL_RADIUS)[0]
 
         for i in success_indices:
             if self.reset_counter[i] is None:
                 self.reset_counter[i] = self.GOAL_WAIT_TIMESTEPS
 
-        for i, counter in enumerate(self.reset_counter):
-            if counter is not None:
-                self.reset_counter[i] -= 1
-                if self.reset_counter[i] == 0:
-                    self.reset_goal(i)
-                    self.reset_counter[i] = None
-
     def get_movement_vector(self, position, goal):
         goal_vector = goal - position
-
         goal_dist = np.linalg.norm(goal_vector)
 
         if goal_dist == 0:
-            return np.array([0, 0])
+            return 0
 
         movement_vector = goal_vector / goal_dist
 
+        if movement_vector[0] == 0:
+            movement_theta = np.sign(movement_vector[1]) * np.pi / 2
+        else:
+            movement_theta = np.arctan2(movement_vector[1], movement_vector[0])
+
         if self.IS_SIMPLE:
-            return movement_vector
+            return movement_theta
 
-        for disp in np.arange(min(self.LOOKAHEAD_DIST, goal_dist), 0, -1):
-            for angle in np.arange(0, self.MOVEMENT_MAX_ANGLE, self.ANGLE_GRAN):
-                for angle_direction in [-1, 1]:
-                    angle_change = angle * angle_direction
+        robot_vector = self.get_robot_position() - position
+        robot_dist = np.linalg.norm(robot_vector)
+        # check_robot_vec = robot_dist < self.ROBOT_ACT_DIST
+        check_robot_vec = False
 
-                    if movement_vector[0] == 0:
-                        new_theta = (
-                            np.sign(movement_vector[1]) * np.pi / 2 - angle_change
-                        )
-                    else:
-                        new_theta = (
-                            np.arctan2(movement_vector[1], movement_vector[0])
-                            - angle_change
-                        )
+        if check_robot_vec:
+            if robot_vector[0] == 0:
+                robot_theta = np.sign(robot_vector[1]) * np.pi / 2
+            else:
+                robot_theta = np.arctan2(robot_vector[1], robot_vector[0])
+        else:
+            robot_theta = 0
 
-                    new_movement_vector = np.array(
-                        [np.cos(new_theta), np.sin(new_theta)]
-                    )
 
-                    if not self.in_env_collision(position + disp * new_movement_vector):
-                        return new_movement_vector
+        for angle in np.arange(0, self.MOVEMENT_MAX_ANGLE, self.ANGLE_GRAN):
+            for angle_direction in [-1, 1]:
+                angle_change = angle * angle_direction
+                new_theta = movement_theta - angle_change
+                new_movement_vector = np.array(
+                    [np.cos(new_theta), np.sin(new_theta)]
+                )
+                is_movement_toward_robot = check_robot_vec and np.abs(new_theta - robot_theta) < self.ROBOT_ANGLE_DIST
+                is_movement_valid = True
+
+                for disp in np.arange(min(self.LOOKAHEAD_DIST, goal_dist), 0, -1):
+                    is_in_env_collision = in_env_collision(position + disp * new_movement_vector)
+                    if is_in_env_collision:
+                        is_movement_valid = False
+                        break
+
+                if is_movement_valid and not is_movement_toward_robot:
+                    return new_theta
         return None
 
     def get_new_position(self, agent_idx, position):
         goal = self.goals[agent_idx]
-        movement_vector = self.get_movement_vector(position, goal)
+        movement_theta = self.get_movement_vector(position, goal)
 
-        if movement_vector is None:
+        if movement_theta is None:
             return position
 
-        for disp in np.arange(self.MAX_DISP, 0, -self.DISP_GRAN):
-            for angle in np.arange(
-                0, self.COLL_AVOID_MAX_ANGLE + self.ANGLE_GRAN, self.ANGLE_GRAN
-            ):
-                for angle_direction in [-1, 1]:
+        for angle in np.arange(
+            0, self.COLL_AVOID_MAX_ANGLE + self.ANGLE_GRAN, self.ANGLE_GRAN
+        ):
+            for angle_direction in [-1, 1]:
+                angle_change = angle * angle_direction
+                new_theta = movement_theta - angle_change
 
-                    angle_change = angle * angle_direction
+                new_movement_vector = np.array(
+                    [np.cos(new_theta), np.sin(new_theta)]
+                )
 
-                    if movement_vector[0] == 0:
-                        new_theta = (
-                            np.sign(movement_vector[1]) * np.pi / 2 - angle_change
-                        )
-                    else:
-                        new_theta = (
-                            np.arctan2(movement_vector[1], movement_vector[0])
-                            - angle_change
-                        )
-
-                    new_movement_vector = np.array(
-                        [np.cos(new_theta), np.sin(new_theta)]
-                    )
-
+                for disp in np.arange(self.MAX_DISP, 0, -self.DISP_GRAN):
                     new_position = position + disp * new_movement_vector
 
-                    is_reaching_goal = (
-                        np.linalg.norm(new_position - goal) <= self.MAX_DISP
-                    )
+                    is_reaching_goal = np.linalg.norm(new_position - goal) < self.GOAL_RADIUS
 
-                    if not is_reaching_goal and (
-                        self.in_env_collision(new_position)
-                        or self.in_agent_collision(new_position, [agent_idx])
-                    ):
-                        continue
+                    is_in_env_collision = in_env_collision(new_position)
+                    in_agent_collision = self.in_agent_collision(new_position, [agent_idx])
 
-                    return new_position
+                    if is_reaching_goal and in_agent_collision:
+                        return position
+
+                    if not is_in_env_collision and not in_agent_collision:
+                        return new_position
         return position
 
 
@@ -217,7 +239,7 @@ class CostMapPlanner(AgentMotionPlanner):
         self.n = len(self.y_coords)
 
         self.generate_cost_kernels()
-        self.cost_map = self.generate_cost_map(self.in_env_collision)
+        self.cost_map = self.generate_cost_map(in_env_collision)
 
     def generate_cost_kernels(self):
         self.map_buffer = max(

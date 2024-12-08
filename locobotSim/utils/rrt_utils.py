@@ -2,14 +2,23 @@ import numpy as np
 from locobotSim.constants import ALPHA
 from locobotSim.utils import angular_diff
 
+def compute_configs_distance(configs_array, config):
+    pos_dist = np.linalg.norm(configs_array[:, :2] - config[:2], axis=1)
+    angle_dist = np.abs(
+        angular_diff(configs_array[:, 2], config[2])
+    )
+
+    return (ALPHA * pos_dist) + ((1 - ALPHA) * angle_dist)
+
 
 class RRTNode:
-    def __init__(self, config, parent=None):
+    def __init__(self, config, parent=None, is_valid=True):
         self.config = config
         self.position = config[:2]
         self.orientation = config[2]
         self.human_positions = config[3:]
         self.parent: RRTNode = parent  # type: ignore
+        self.is_valid = is_valid
 
         self.children = {}
 
