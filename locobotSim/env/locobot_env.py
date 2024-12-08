@@ -11,7 +11,7 @@ np.set_printoptions(suppress=True)
 
 
 class LocobotEnv:
-    max_speed = 1000
+    max_speed = 70
     LOCOBOT_RADIUS = 0.2
 
     sites = {
@@ -39,6 +39,7 @@ class LocobotEnv:
     }
 
     def __init__(self, num_humans=5, seed=None):
+        self.num_humans = num_humans
         if seed is not None:
             np.random.seed(seed)
             random.seed(seed)
@@ -68,8 +69,8 @@ class LocobotEnv:
         position = self.get_robot_position()
         velocity = self.get_robot_velocity()
         orientation = self.get_robot_orientation()
-
-        human_positions = self.humans.get_human_positions().reshape((1, -1))[0]
+        human_positions = np.zeros(10)
+        human_positions[:2 * self.num_humans] = self.humans.get_human_positions().reshape((1, -1))[0]
         human_goals = self.humans.goals
         human_goals = [self.site_indices[goal] for goal in human_goals]
 
@@ -89,13 +90,11 @@ class LocobotEnv:
 
     def convert_obs_to_state(self, obs):
         position = obs[:2]
-        orientation_euler = obs[2]
+        orientation = obs[2]
         velocity = obs[3]
-        human_positions = obs[4:14].reshape((-1, 2))
+        human_positions = obs[4:4 + (self.num_humans * 2)].reshape((-1, 2))
         human_goal_site_idx = obs[14:]
         human_goal_sites = [self.indices_to_sites[goal] for goal in human_goal_site_idx]
-
-        orientation = convert_robot_orientation_to_quat(orientation_euler)
 
         return position, orientation, velocity, human_positions, human_goal_sites
 
@@ -163,6 +162,9 @@ class LocobotEnv:
                 self.data.qacc_warmstart[i] = 0
             mj.mj_step(self.model, self.data)
 
+    def render(self):
+        mj.mj_render(self.model, self.data, mj.MJCAT_ALL, mj.MJRF_CAMERA)
+
     def forward_prop(self, config, u, prop_steps):
         self.reset(init_obs=config)
         traj = [config]
@@ -173,7 +175,6 @@ class LocobotEnv:
             traj.append(obs)
 
             if in_env_collision(obs[:2]) or self.humans.in_agent_collision(obs[:2], exclude_robot=True):
-                # breakpoint()
                 is_valid = False
                 break
 

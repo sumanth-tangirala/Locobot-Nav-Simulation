@@ -11,8 +11,7 @@ np.set_printoptions(suppress=True)
 
 class LocobotVisualizer:
     def __init__(self):
-        self.locobot = LocobotEnv(num_humans=2)
-        print(self.locobot.get_robot_orientation())
+        self.locobot = LocobotEnv(num_humans=5)
         self.locobot.reset()
 
         cam = mj.MjvCamera()
@@ -61,8 +60,7 @@ class LocobotVisualizer:
         inc = 0.01
         while not glfw.window_should_close(self.window):
             steps += 1
-            self.locobot.step()
-            print(self.locobot.get_robot_position())
+            self.locobot.step(np.array([1.0, 1.0]))
             viewport_width, viewport_height = glfw.get_framebuffer_size(self.window)
             viewport = mj.MjrRect(0, 0, viewport_width, viewport_height)
 

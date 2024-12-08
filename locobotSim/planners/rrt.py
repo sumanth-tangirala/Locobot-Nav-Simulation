@@ -145,6 +145,10 @@ class RRT:
         self.controls = list(reversed(reverse_controls))
         self.prop_steps = list(reversed(reverse_prop_steps))
 
+        total_steps = sum(self.prop_steps)
+
+        print("Total Steps: ", total_steps)
+
         return self.trajectory
 
     def visualize_rrt(self):
@@ -194,13 +198,28 @@ class RRT:
     def visualize_path(self):
         plt.figure(figsize=(8, 8))
 
+        # Set the limits
+        plt.xlim(ENV_X_MIN, ENV_X_MAX)
+        plt.ylim(ENV_Y_MIN, ENV_Y_MAX)
+
         if not self.trajectory_found:
             print("No trajectory found")
             return
 
-        for node in self.trajectory:
-            config = node.config
-            plt.plot(config[0], config[1], "bo")
+        # Plot the trajectory
+        for i in range(len(self.trajectory) - 1):
+            plt.plot(
+                [self.trajectory[i][0], self.trajectory[i + 1][0]],
+                [self.trajectory[i][1], self.trajectory[i + 1][1]],
+                "b-",
+            )
+
+        plt.plot(self.start[0], self.start[1], "go")
+        plt.plot(self.goal[0], self.goal[1], "ro")
+
+        # Save the plot
+        plt.savefig("./data/rrt/path.png")
+
 
 
     def visualize(self):

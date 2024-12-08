@@ -56,16 +56,16 @@ class AgentMotionPlanner:
 
 
 class RVO(AgentMotionPlanner):
-    MAX_DISP = 0.01
+    MAX_DISP = 0.007
     DISP_GRAN = 0.0035
     COLL_AVOID_MAX_ANGLE = np.pi / 1.2
     LOOKAHEAD_DIST = 7
-    MOVEMENT_MAX_ANGLE = np.pi / 1.2
-    ANGLE_GRAN = np.pi / 18
+    MOVEMENT_MAX_ANGLE = np.pi / 1.5
+    ANGLE_GRAN = np.pi / 12
     IS_SIMPLE = False
-    MAX_STUCK_COUNTER = 60
+    MAX_STUCK_COUNTER = 80
     STUCK_THRESHOLD = DISP_GRAN
-    GOAL_WAIT_TIMESTEPS = 70
+    GOAL_WAIT_TIMESTEPS = 50
     ROBOT_ACT_DIST = 0.2
     ROBOT_ANGLE_DIST = np.pi/20
     GOAL_RADIUS=0.1
@@ -105,7 +105,7 @@ class RVO(AgentMotionPlanner):
                 if self.reset_counter[i] == 0:
                     self.reset_human_goal(i)
                     self.reset_counter[i] = None
-                    continue
+                continue
             old_position = position.copy()
             new_position = self.get_new_position(i, position)
             human_positions[i] = new_position
@@ -140,8 +140,8 @@ class RVO(AgentMotionPlanner):
 
         robot_vector = self.get_robot_position() - position
         robot_dist = np.linalg.norm(robot_vector)
-        # check_robot_vec = robot_dist < self.ROBOT_ACT_DIST
-        check_robot_vec = False
+        check_robot_vec = robot_dist < self.ROBOT_ACT_DIST
+        # check_robot_vec = False
 
         if check_robot_vec:
             if robot_vector[0] == 0:
@@ -151,25 +151,22 @@ class RVO(AgentMotionPlanner):
         else:
             robot_theta = 0
 
+        for disp in np.arange(min(self.LOOKAHEAD_DIST, goal_dist), 0, -3):
+            for angle in np.arange(0, self.MOVEMENT_MAX_ANGLE, self.ANGLE_GRAN):
+                for angle_direction in [-1, 1]:
+                    angle_change = angle * angle_direction
+                    new_theta = movement_theta - angle_change
+                    new_movement_vector = np.array(
+                        [np.cos(new_theta), np.sin(new_theta)]
+                    )
+                    is_movement_toward_robot = check_robot_vec and np.abs(new_theta - robot_theta) < self.ROBOT_ANGLE_DIST
 
-        for angle in np.arange(0, self.MOVEMENT_MAX_ANGLE, self.ANGLE_GRAN):
-            for angle_direction in [-1, 1]:
-                angle_change = angle * angle_direction
-                new_theta = movement_theta - angle_change
-                new_movement_vector = np.array(
-                    [np.cos(new_theta), np.sin(new_theta)]
-                )
-                is_movement_toward_robot = check_robot_vec and np.abs(new_theta - robot_theta) < self.ROBOT_ANGLE_DIST
-                is_movement_valid = True
+                    if is_movement_toward_robot:
+                        continue
 
-                for disp in np.arange(min(self.LOOKAHEAD_DIST, goal_dist), 0, -1):
                     is_in_env_collision = in_env_collision(position + disp * new_movement_vector)
-                    if is_in_env_collision:
-                        is_movement_valid = False
-                        break
-
-                if is_movement_valid and not is_movement_toward_robot:
-                    return new_theta
+                    if not is_in_env_collision:
+                        return new_theta
         return None
 
     def get_new_position(self, agent_idx, position):
@@ -189,7 +186,6 @@ class RVO(AgentMotionPlanner):
                 new_movement_vector = np.array(
                     [np.cos(new_theta), np.sin(new_theta)]
                 )
-
                 for disp in np.arange(self.MAX_DISP, 0, -self.DISP_GRAN):
                     new_position = position + disp * new_movement_vector
 

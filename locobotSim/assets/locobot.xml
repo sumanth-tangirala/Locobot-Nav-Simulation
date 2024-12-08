@@ -61,8 +61,8 @@
     </worldbody>
     <!-- Velocity and steering actuators for both the wheels -->
     <actuator>
-        <velocity ctrllimited="true" ctrlrange="-1000 1000" joint="wheel_left_joint" gear="1" name="wheel_left_actuator" user="1"></velocity>
-        <velocity ctrllimited="true" ctrlrange="-1000 1000" joint="wheel_right_joint" gear="1" name="wheel_right_actuator" user="1"></velocity>
+        <velocity ctrllimited="true" ctrlrange="-70 70" joint="wheel_left_joint" gear="1" name="wheel_left_actuator" user="1"></velocity>
+        <velocity ctrllimited="true" ctrlrange="-70 70" joint="wheel_right_joint" gear="1" name="wheel_right_actuator" user="1"></velocity>
     </actuator>
 </mujoco>
   
