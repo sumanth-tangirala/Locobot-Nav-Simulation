@@ -100,6 +100,10 @@ class Humans:
 
                 goals.append(goal)
 
+        for goal in goals:
+            if not isinstance(goal, str):
+                breakpoint()
+
         goal_coords = np.array([self.sites[goal] for goal in goals])
 
         self.goals = goals
