@@ -119,7 +119,7 @@ class Humans:
         np.random.shuffle(goals)
 
         for idx, i in enumerate(indices):
-            self.goals[i] = np.array(goals[idx])
+            self.goals[i] = goals[idx]
             self.agent_motion_planner.update_goal(i, self.sites[goals[idx]])
 
     def apply_human_action(self, i, position):
